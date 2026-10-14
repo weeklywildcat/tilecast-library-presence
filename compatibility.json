@@ -1,14 +1,14 @@
 {
   "minimumTilecastVersion": null,
   "sdkRevision": "990f44091638bc849ee5a30d33c1d6e37012d296",
-  "hostQualificationRevision": "91a0b5209b603607123213eba154f31b130938a3",
+  "hostQualificationRevision": "31a72b57289cca36678cb2a42b930ca72c0f1249",
   "requiredPlayerCapability": "plugin.external-runtime@1",
   "supportedPlayerFamilies": ["edge"],
   "qualification": {
     "edge": {
       "software": {
         "status": "passed",
-        "tilecastRevision": "91a0b5209b603607123213eba154f31b130938a3",
+        "tilecastRevision": "31a72b57289cca36678cb2a42b930ca72c0f1249",
         "evidence": [
           "apps/edge/renderer-wpe/ci/run-e2e.sh external-plugin: shipped Runtime in real WPE, plain and synchronized playlists",
           "apps/edge/tilecastd/tests/playback.rs external_plugin_surface_changes_leave_synchronized_video_playback_untouched",
