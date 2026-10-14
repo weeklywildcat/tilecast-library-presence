@@ -1,0 +1,6 @@
+{
+  "minimumTilecastVersion": null,
+  "sdkRevision": "990f44091638bc849ee5a30d33c1d6e37012d296",
+  "requiredPlayerCapability": "plugin.external-runtime@1",
+  "status": "Awaiting a coordinated compatible Tilecast release and native qualification."
+}

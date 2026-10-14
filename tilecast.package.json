@@ -1,0 +1,21 @@
+{
+  "apiVersion": 4,
+  "packageId": "weeklywildcat.library-presence",
+  "packageVersion": "0.1.0",
+  "name": "Library Presence",
+  "description": "Live library occupancy and brief welcomes on a Tilecast corner surface.",
+  "publisher": { "id": "weeklywildcat", "name": "Weekly Wildcat" },
+  "repository": "https://github.com/weeklywildcat/tilecast-library-presence",
+  "license": "AGPL-3.0-only",
+  "tilecast": { "version": ">=0.0.0 <0.0.0" },
+  "distribution": { "oci": "ghcr.io/weeklywildcat/tilecast-library-presence" },
+  "contributions": [{ "type": "plugin", "path": "./plugin" }],
+  "runtime": { "module": "./runtime/library_presence.wasm" },
+  "capabilities": {
+    "network": { "hosts": ["signage.weeklywildcat.com"] },
+    "storage": true,
+    "realtime": { "jobs": [{ "id": "presence", "intervalSeconds": 5 }] },
+    "studioUI": { "entry": "./studio/index.html" },
+    "services": [{ "id": "targets.resolve", "version": 2 }, { "id": "plugin-runtime.state", "version": 1 }]
+  }
+}

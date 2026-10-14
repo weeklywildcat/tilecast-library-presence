@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Library Presence</title><style>__STYLE__</style></head>
+<body><main>
+<header><div><h1>Library Presence</h1><p>Live occupancy and brief welcomes for your library screens.</p></div><span id="connection" class="status" role="status">Connecting…</span></header>
+<div class="summary"><div><span>In the library</span><strong id="occupancy">—</strong></div><div><span>Last successful refresh</span><strong id="refresh">Waiting for the first refresh</strong></div></div>
+<section aria-label="TV preview"><div class="section-heading"><h2>TV preview</h2><div class="segmented" aria-label="Preview mode"><button id="count-mode" type="button" aria-pressed="true">Count</button><button id="welcome-mode" type="button" aria-pressed="false">Welcome</button></div></div><div id="preview"><div id="canvas"><span class="preview-label">Library screen preview</span></div></div><p class="help">Preview controls only affect this preview.</p></section>
+<div id="settings"><fieldset disabled id="fields">
+<div class="toggle"><label for="enabled">Enabled<span>Show Library Presence on the selected screens.</span></label><input id="enabled" type="checkbox" role="switch"></div>
+<div class="toggle"><label for="personalized">Personalized greetings<span>Welcome new arrivals with their first name when available.</span></label><input id="personalized" type="checkbox" role="switch" checked></div>
+<label class="field" for="position">Corner position<select id="position"><option value="bottom-left">Bottom left</option><option value="bottom-right">Bottom right</option><option value="top-left">Top left</option><option value="top-right">Top right</option></select></label>
+<section aria-labelledby="targets-label"><h2 id="targets-label">Screens</h2><div class="target-mode"><label><input type="radio" name="target-mode" value="selected" checked> Selected targets</label><label id="all-option" hidden><input type="radio" name="target-mode" value="all"> All screens</label></div>
+<div id="target-picker"><div class="target-tools"><label for="kind">Target type<select id="kind"><option value="screen">Screens</option><option value="group">Groups</option><option value="location">Locations</option></select></label><label for="search">Find targets<input id="search" type="search" placeholder="Search by name" maxlength="120"></label><button id="find" type="button">Search</button></div><div id="options" role="group" aria-label="Available targets"></div><div class="pagination"><button id="previous" type="button">Previous</button><span id="page-info"></span><button id="next" type="button">Next</button></div><div id="selection" aria-label="Selected targets"></div></div></section>
+<footer><p id="message" role="status"></p><button id="save" type="button">Save changes</button></footer>
+</fieldset></div></main><script>__SCRIPT__</script></body></html>

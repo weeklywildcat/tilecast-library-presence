@@ -1,0 +1,18 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+const sdk = resolve(process.env.TILECAST_SDK_ROOT ?? ".tilecast-sdk");
+const compatibility = JSON.parse(await readFile(new URL("../compatibility.json", import.meta.url)));
+assert.match(compatibility.sdkRevision, /^[a-f0-9]{40}$/);
+assert.equal(execFileSync("git", ["rev-parse", "HEAD"], { cwd: sdk, encoding: "utf8" }).trim(), compatibility.sdkRevision);
+const cargo = await readFile(new URL("../guest/Cargo.toml", import.meta.url), "utf8");
+assert.ok(cargo.includes(`rev = "${compatibility.sdkRevision}"`), "Guest and schema SDK revisions must agree.");
+const { parsePackageManifest } = await import(pathToFileURL(resolve(sdk, "packages/package-sdk/src/manifest.ts")));
+const { parseExternalPluginManifest } = await import(pathToFileURL(resolve(sdk, "packages/package-sdk/src/external-plugin.ts")));
+const manifest = parsePackageManifest(JSON.parse(await readFile(new URL("../tilecast.package.json", import.meta.url))));
+const plugin = parseExternalPluginManifest(JSON.parse(await readFile(new URL("../plugin/tilecast.plugin.json", import.meta.url))));
+assert.equal(manifest.packageId, "weeklywildcat.library-presence");
+assert.equal(plugin.id, "library_presence");
+console.log("Package and plugin descriptors validate against the immutable SDK revision.");

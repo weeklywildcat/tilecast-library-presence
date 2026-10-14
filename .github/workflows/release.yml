@@ -1,0 +1,83 @@
+name: Publish signed Tilecast package
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+concurrency:
+  group: package-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v6
+      - id: sdk
+        run: node -e 'const c=require("./compatibility.json");if(!/^[a-f0-9]{40}$/.test(c.sdkRevision))process.exit(1);require("fs").appendFileSync(process.env.GITHUB_OUTPUT,"revision="+c.sdkRevision+"\n")'
+      - uses: actions/checkout@v6
+        with:
+          repository: gbyo/tilecast
+          ref: ${{ steps.sdk.outputs.revision }}
+          path: .tilecast-sdk
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+          cache: npm
+      - name: Require the actual compatible Tilecast release
+        run: node scripts/release-gate.mjs
+      - run: rustup toolchain install 1.98.0 --profile minimal --component clippy,rustfmt --target wasm32-unknown-unknown
+      - run: npm ci
+      - run: npm install --ignore-scripts --omit=dev --no-package-lock --workspaces=false --prefix .tilecast-sdk/packages/package-sdk
+      - run: node scripts/validate-sdk.mjs
+      - run: npx playwright install --with-deps chromium
+      - run: cargo test --manifest-path guest/Cargo.toml --locked
+      - run: cargo build --manifest-path guest/Cargo.toml --release --locked --target wasm32-unknown-unknown
+      - run: npm run build
+      - run: npm test
+        env:
+          TILECAST_SDK_ROOT: .tilecast-sdk
+      - run: python3 scripts/oci.py
+      - uses: oras-project/setup-oras@v2
+        with:
+          version: 1.3.4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish one immutable version
+        id: publish
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          ref="ghcr.io/weeklywildcat/tilecast-library-presence:$RELEASE_TAG"
+          if oras manifest fetch --descriptor "$ref" >/dev/null 2>&1; then
+            echo "Refusing to replace a published package version" >&2
+            exit 1
+          fi
+          oras cp --from-oci-layout build/oci:package "$ref"
+          expected=$(cat build/artifact-digest.txt)
+          actual=$(oras manifest fetch --descriptor "$ref" | jq -r .digest)
+          test "$expected" = "$actual"
+          echo "digest=$actual" >> "$GITHUB_OUTPUT"
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ghcr.io/weeklywildcat/tilecast-library-presence
+          subject-digest: ${{ steps.publish.outputs.digest }}
+          push-to-registry: true
+      - name: Create the public GitHub release after provenance is available
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          PACKAGE_DIGEST: ${{ steps.publish.outputs.digest }}
+        run: |
+          set -euo pipefail
+          printf 'Tilecast Library Presence package.\n\nVerified OCI digest: `%s`\n' "$PACKAGE_DIGEST" > build/release-notes.md
+          gh release create "$RELEASE_TAG" --verify-tag --title "Library Presence $RELEASE_TAG" --notes-file build/release-notes.md

@@ -1,0 +1,22 @@
+[package]
+name = "library-presence"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-only"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+time = { version = "0.3", features = ["parsing", "formatting"] }
+tilecast-package-guest = { git = "https://github.com/gbyo/tilecast", rev = "990f44091638bc849ee5a30d33c1d6e37012d296" }
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+panic = "abort"
