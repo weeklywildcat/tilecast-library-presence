@@ -1,0 +1,66 @@
+name: Check Library Presence
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+      - id: sdk
+        run: node -e 'const c=require("./compatibility.json");if(!/^[a-f0-9]{40}$/.test(c.sdkRevision))process.exit(1);require("fs").appendFileSync(process.env.GITHUB_OUTPUT,"revision="+c.sdkRevision+"\n")'
+      - uses: actions/checkout@v6
+        with:
+          repository: gbyo/tilecast
+          ref: ${{ steps.sdk.outputs.revision }}
+          path: .tilecast-sdk
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+          cache: npm
+      - run: rustup toolchain install 1.98.0 --profile minimal --component clippy,rustfmt --target wasm32-unknown-unknown
+      - run: npm ci
+      - run: npm install --ignore-scripts --omit=dev --no-package-lock --workspaces=false --prefix .tilecast-sdk/packages/package-sdk
+      - run: node scripts/validate-sdk.mjs
+      - run: npx playwright install --with-deps chromium
+      - run: cargo fmt --manifest-path guest/Cargo.toml --check
+      - run: cargo clippy --manifest-path guest/Cargo.toml --all-targets --locked -- -D warnings
+      - run: cargo test --manifest-path guest/Cargo.toml --locked
+      - run: cargo build --manifest-path guest/Cargo.toml --release --locked --target wasm32-unknown-unknown
+      - run: npm run build
+      - run: npm test
+        env:
+          TILECAST_SDK_ROOT: .tilecast-sdk
+      - run: python3 scripts/oci.py
+      - id: host
+        run: node -e 'const c=require("./compatibility.json");if(!/^[a-f0-9]{40}$/.test(c.hostQualificationRevision))process.exit(1);require("fs").appendFileSync(process.env.GITHUB_OUTPUT,"revision="+c.hostQualificationRevision+"\n")'
+      - uses: actions/checkout@v6
+        with:
+          repository: gbyo/tilecast
+          ref: ${{ steps.host.outputs.revision }}
+          path: .tilecast-host
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: .tilecast-host/apps/server/go.mod
+          cache-dependency-path: .tilecast-host/apps/server/go.sum
+      - name: Qualify the built guest through Tilecast's real host
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+        run: |
+          export TILECAST_EXTERNAL_PACKAGE_FIXTURE="$GITHUB_WORKSPACE/build/oci"
+          export TILECAST_EXTERNAL_PACKAGE_SCENARIO="$GITHUB_WORKSPACE/tests/tilecast-scenario.json"
+          cd .tilecast-host/apps/server
+          go test -race ./internal/extensions/wasm -run TestExternalPackageFixture -v

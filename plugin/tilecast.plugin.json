@@ -1,0 +1,12 @@
+{
+  "apiVersion": 2,
+  "id": "library_presence",
+  "definitionVersion": 1,
+  "name": "Library Presence",
+  "description": "Library occupancy and brief arrival welcomes.",
+  "capabilities": { "playerManifest": true },
+  "runtime": {
+    "surfaces": ["corner.top-left", "corner.top-right", "corner.bottom-left", "corner.bottom-right"],
+    "tier": "ambient"
+  }
+}
