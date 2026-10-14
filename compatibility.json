@@ -1,7 +1,24 @@
 {
   "minimumTilecastVersion": null,
   "sdkRevision": "990f44091638bc849ee5a30d33c1d6e37012d296",
-  "hostQualificationRevision": "18936ea43a4abd54186d90fa5fbbb17aa56cb5e7",
+  "hostQualificationRevision": "91a0b5209b603607123213eba154f31b130938a3",
   "requiredPlayerCapability": "plugin.external-runtime@1",
-  "status": "Awaiting a coordinated compatible Tilecast release and native qualification."
+  "supportedPlayerFamilies": ["edge"],
+  "qualification": {
+    "edge": {
+      "software": {
+        "status": "passed",
+        "tilecastRevision": "91a0b5209b603607123213eba154f31b130938a3",
+        "evidence": [
+          "apps/edge/renderer-wpe/ci/run-e2e.sh external-plugin: shipped Runtime in real WPE, plain and synchronized playlists",
+          "apps/edge/tilecastd/tests/playback.rs external_plugin_surface_changes_leave_synchronized_video_playback_untouched",
+          "apps/server/internal/extensions/wasm TestExternalPackageFixture with this package's OCI layout"
+        ]
+      },
+      "physicalCanary": { "status": "pending" }
+    },
+    "windows": { "software": { "status": "not-qualified" }, "physicalCanary": { "status": "not-qualified" } },
+    "android": { "software": { "status": "not-qualified" }, "physicalCanary": { "status": "not-qualified" } }
+  },
+  "status": "Edge/WPE software qualification recorded. Awaiting the physical Edge canary and a Stable coordinated Tilecast release; Windows and Android are not qualified."
 }
