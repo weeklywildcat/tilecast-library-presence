@@ -37,6 +37,8 @@ python3 scripts/oci.py
 
 For the browser contract checks, install Chromium with `npx playwright install chromium` and set `TILECAST_SDK_ROOT` to a checkout of the exact SDK revision from `compatibility.json` when running `npm test`. CI checks out that immutable revision. Screenshots go to ignored `test-artifacts/`.
 
+CI also checks out `hostQualificationRevision` and runs `tests/tilecast-scenario.json` through Tilecast's real Wasm host and PostgreSQL services. Locally, set `TILECAST_EXTERNAL_PACKAGE_FIXTURE` to this repository's `build/oci`, `TILECAST_EXTERNAL_PACKAGE_SCENARIO` to that scenario, and `TEST_DATABASE_URL` to an isolated test PostgreSQL instance, then run `go test -race ./internal/extensions/wasm -run TestExternalPackageFixture -v` from the pinned host's `apps/server`. The database role must be able to create temporary databases. This deliberately uses a local compatibility variant and does not claim that the unreleased package installs on an existing Tilecast release.
+
 ## Installation after a compatible release
 
 Give Tilecast's custom GitHub installer this public repository URL:

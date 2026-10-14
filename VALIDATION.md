@@ -8,10 +8,11 @@ Implemented checks:
 - Release gate rejects publication while no compatible coordinated release exists.
 - Local build produces a self-contained Studio page, Player bundle, Wasm module, and standard OCI layout.
 - Chromium browser checks exercise the actual opaque Studio bridge, preview, target selection and save; the SDK-assembled Player frame proves text safety, parent and native bridge isolation, zero release, and local deadlines under its deny-all response policy. These are browser checks, not native platform qualification.
+- The built artifact passes 15 race-enabled steps through Tilecast's real verifier, installer, contribution catalog, compiled Wasm service, dispatcher, PostgreSQL KV/state services and realtime scheduler. Coverage includes the real target picker, baseline/arrival, failed fetch without renewal, screen/group/location/all targets, update/rollback epoch fencing and retained baselines, removal stopping jobs/surfaces, and same-digest reinstall with clean storage/configuration. The draft's real compatibility range refuses installation; execution uses an explicitly local test variant. CI pins the host qualification revision independently of the SDK revision.
 
 Still required before claiming the complete feature or publishing:
 
-- Validate the built artifact with Tilecast's real verifier, catalog, dispatcher, and PostgreSQL state service. Exercise install, targeting, update, rollback, removal, and reinstall through the real host.
+- Complete the public GitHub resolver/provenance and HTTP custom-install path using the actual signed release; the local real-host scenario uses development provenance and controlled network responses.
 - Broaden Studio browser coverage for target pagination, stale configuration conflicts, and theme/motion hints.
 - Exercise the external surface MessageChannel ABI in Edge/WPE, Windows/WebView2, and Android. Verify sandbox policy, bridge isolation, navigation refusal, arbitration, sleep/wake, and local deadlines.
 - Capture frame add/replacement/removal during ordinary and synchronized video without a new presentation activation, timeline reset, or media grant changes.

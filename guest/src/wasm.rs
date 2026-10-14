@@ -147,7 +147,7 @@ fn ui(request: UiRequest) -> Result<Value, ()> {
             status(view)
         }
         UiRequest::Options { kind, page, query } => {
-            if !(1..=1000).contains(&page) || query.as_ref().is_some_and(|query| query.len() > 120)
+            if !(1..=1000).contains(&page) || query.as_ref().is_some_and(|query| query.len() > 100)
             {
                 return Err(());
             }

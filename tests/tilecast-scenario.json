@@ -1,0 +1,83 @@
+{
+  "requestUrl": "https://signage.weeklywildcat.com/library/presence.json",
+  "steps": [
+    {
+      "name": "real-target-picker",
+      "ui": { "action": "options", "kind": "group", "page": 1, "query": null },
+      "uiExpected": { "ok": true, "data": { "items": [{ "id": "@group", "name": "Fixture group", "kind": "group" }], "total": 1, "canSelectAll": true } }
+    },
+    {
+      "name": "unconfigured-private-status",
+      "ui": { "action": "get" },
+      "uiExpected": { "ok": true, "data": { "enabled": false, "currentCount": null, "connection": "waiting" } },
+      "screens": []
+    },
+    {
+      "name": "configure-one-screen",
+      "ui": { "action": "save", "enabled": true, "configuration": { "personalizedGreetings": true, "position": "bottom-left" }, "targets": { "mode": "selected", "screenIds": ["@screen0"], "groupIds": [], "locationIds": [] }, "revision": 0 },
+      "uiExpected": { "ok": true, "data": { "revision": 1 } },
+      "screens": []
+    },
+    {
+      "name": "baseline-through-real-state-service",
+      "source": { "schemaVersion": 1, "currentCount": 12, "generatedAt": "@time:0", "latestCheckIn": { "cursor": "100", "at": "@time:-10000", "firstName": "Gibson" } },
+      "job": true,
+      "state": { "count": 12, "position": "bottom-left", "greeting": null },
+      "screens": [0]
+    },
+    {
+      "name": "arrival-at-unchanged-count",
+      "source": { "schemaVersion": 1, "currentCount": 12, "generatedAt": "@time:0", "latestCheckIn": { "cursor": "101", "at": "@time:-1000", "firstName": "Gibson" } },
+      "job": true,
+      "state": { "count": 12, "greeting": { "firstName": "Gibson" } },
+      "screens": [0]
+    },
+    {
+      "name": "failed-fetch-cannot-renew-state",
+      "fetchFails": true, "job": true, "jobFails": true,
+      "unchangedFields": ["validUntil", "greeting"],
+      "screens": [0]
+    },
+    {
+      "name": "group-targets-clear-old-screen",
+      "ui": { "action": "save", "enabled": true, "configuration": { "personalizedGreetings": true, "position": "top-right" }, "targets": { "mode": "selected", "screenIds": [], "groupIds": ["@group"], "locationIds": [] }, "revision": 1 },
+      "uiExpected": { "ok": true, "data": { "revision": 2 } },
+      "screens": []
+    },
+    {
+      "name": "group-publication-without-replay",
+      "job": true, "state": { "count": 12, "position": "top-right", "greeting": null }, "screens": [1]
+    },
+    {
+      "name": "location-targets",
+      "ui": { "action": "save", "enabled": true, "configuration": { "personalizedGreetings": true, "position": "bottom-left" }, "targets": { "mode": "selected", "screenIds": [], "groupIds": [], "locationIds": ["@location"] }, "revision": 2 },
+      "source": { "schemaVersion": 1, "currentCount": 9, "generatedAt": "@time:0", "latestCheckIn": { "cursor": "90", "at": "@time:-10000", "firstName": "Earlier" } },
+      "job": true, "state": { "count": 9, "greeting": null }, "screens": [2]
+    },
+    {
+      "name": "explicit-all-targets",
+      "ui": { "action": "save", "enabled": true, "configuration": { "personalizedGreetings": true, "position": "bottom-left" }, "targets": { "mode": "all", "screenIds": [], "groupIds": [], "locationIds": [] }, "revision": 3 },
+      "job": true, "state": { "count": 9, "greeting": null }, "screens": [0, 1, 2]
+    },
+    {
+      "name": "update-fences-old-code-and-keeps-baseline",
+      "lifecycle": "update", "updateVersion": "0.1.1", "job": true, "state": { "count": 9, "greeting": null }, "unchangedFields": ["validUntil"], "screens": [0, 1, 2]
+    },
+    {
+      "name": "rollback-does-not-restore-a-welcome",
+      "lifecycle": "rollback", "job": true, "state": { "count": 9, "greeting": null }, "unchangedFields": ["validUntil"], "screens": [0, 1, 2]
+    },
+    { "name": "removal-clears-surfaces", "lifecycle": "remove", "screens": [] },
+    {
+      "name": "same-digest-reinstall-has-clean-storage-and-configuration",
+      "lifecycle": "reinstall", "ui": { "action": "get" },
+      "uiExpected": { "ok": true, "data": { "enabled": false, "currentCount": null, "connection": "waiting", "revision": 0 } }, "screens": []
+    },
+    {
+      "name": "reinstall-establishes-a-new-baseline",
+      "ui": { "action": "save", "enabled": true, "configuration": { "personalizedGreetings": true, "position": "bottom-left" }, "targets": { "mode": "all", "screenIds": [], "groupIds": [], "locationIds": [] }, "revision": 0 },
+      "source": { "schemaVersion": 1, "currentCount": 12, "generatedAt": "@time:0", "latestCheckIn": { "cursor": "101", "at": "@time:-1000", "firstName": "Gibson" } },
+      "job": true, "state": { "count": 12, "greeting": null }, "screens": [0, 1, 2]
+    }
+  ]
+}
