@@ -196,3 +196,37 @@ fn invalid_sources_and_stale_data_are_rejected() {
     }
     assert!(parse_source(&vec![b' '; SOURCE_MAX_BYTES + 1], NOW).is_err());
 }
+#[test]
+fn source_boundaries_accept_the_limits_and_refuse_the_next_value() {
+    let at = |generated: i64, count: u32, cursor: &str, name: Option<&str>| {
+        let latest = json!({"cursor": cursor, "at": iso(generated).unwrap(), "firstName": name});
+        serde_json::to_vec(&json!({"schemaVersion":1,"currentCount":count,"generatedAt":iso(generated).unwrap(),"latestCheckIn":latest})).unwrap()
+    };
+    // Counts, freshness window, cursor and name lengths are inclusive limits.
+    assert!(parse_source(&at(NOW, 0, "1", None), NOW).is_ok());
+    assert!(parse_source(&at(NOW, 100_000, "1", None), NOW).is_ok());
+    assert!(parse_source(&at(NOW, 100_001, "1", None), NOW).is_err());
+    assert!(parse_source(&at(NOW - 30_000, 1, "1", None), NOW).is_ok());
+    assert!(parse_source(&at(NOW - 30_001, 1, "1", None), NOW).is_err());
+    assert!(parse_source(&at(NOW + 5000, 1, "1", None), NOW).is_ok());
+    assert!(parse_source(&at(NOW + 5001, 1, "1", None), NOW).is_err());
+    assert!(parse_source(&at(NOW, 1, &"c".repeat(128), None), NOW).is_ok());
+    assert!(parse_source(&at(NOW, 1, &"c".repeat(129), None), NOW).is_err());
+    assert!(parse_source(&at(NOW, 1, "", None), NOW).is_err());
+    assert!(parse_source(&at(NOW, 1, "1", Some(&"é".repeat(40))), NOW).is_ok());
+    assert!(parse_source(&at(NOW, 1, "1", Some(&"é".repeat(41))), NOW).is_err());
+    // Whitespace-only names mean "no name", while controls and bidi marks are refused.
+    assert!(parse_source(&at(NOW, 1, "1", Some("   ")), NOW).is_ok());
+    assert!(parse_source(&at(NOW, 1, "1", Some("a\u{7}b")), NOW).is_err());
+    assert!(parse_source(&at(NOW, 1, "1", Some("a\u{2067}b")), NOW).is_err());
+    // A source of exactly the byte bound parses; one more byte is refused first.
+    let mut padded = at(NOW, 1, "1", None);
+    padded.resize(SOURCE_MAX_BYTES, b' ');
+    assert!(parse_source(&padded, NOW).is_ok());
+    padded.push(b' ');
+    assert!(parse_source(&padded, NOW).is_err());
+    // Unknown fields and a wrong shape never parse.
+    let unknown = json!({"schemaVersion":1,"currentCount":1,"generatedAt":iso(NOW).unwrap(),"latestCheckIn":null,"extra":true});
+    assert!(parse_source(&serde_json::to_vec(&unknown).unwrap(), NOW).is_err());
+    assert!(parse_source(b"[]", NOW).is_err());
+}

@@ -1,17 +1,14 @@
-import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { requireReleasable, requireTilecastRelease } from "./compatibility.mjs";
 const manifest = JSON.parse(await readFile(new URL("../tilecast.package.json", import.meta.url)));
 const compatibility = JSON.parse(await readFile(new URL("../compatibility.json", import.meta.url)));
-const minimum = compatibility.minimumTilecastVersion;
-assert.equal(typeof minimum, "string", "A verified compatible Tilecast release is required before publishing.");
-assert.match(minimum, /^\d+\.\d+\.\d+$/, "Use the actual stable coordinated release version.");
-assert.ok(manifest.tilecast.version.startsWith(`>=${minimum} `), "The package range must start at the verified compatible release.");
-assert.equal(process.env.GITHUB_REF_NAME, `v${manifest.packageVersion}`, "Release tag and package version must agree.");
-assert.equal(process.env.GITHUB_REPOSITORY, "weeklywildcat/tilecast-library-presence");
-const response = await fetch(`https://api.github.com/repos/gbyo/tilecast/releases/tags/v${minimum}`, { headers: { Accept: "application/vnd.github+json" } });
-assert.equal(response.status, 200, "The coordinated Tilecast release must be public.");
-const release = await response.json();
-assert.equal(release.draft, false); assert.equal(release.prerelease, false);
-assert.equal(compatibility.requiredPlayerCapability, "plugin.external-runtime@1");
-assert.equal(compatibility.nativeQualificationComplete, true, "Complete the documented native qualification gates first.");
-console.log("Coordinated compatibility and immutable package tag confirmed.");
+const problems = requireReleasable(compatibility, manifest, process.env);
+if (problems.length === 0) {
+  const minimum = compatibility.minimumTilecastVersion, headers = { Accept: "application/vnd.github+json" };
+  const get = async (path) => { const response = await fetch(`https://api.github.com/repos/gbyo/tilecast/${path}`, { headers }); return response.status === 200 ? response.json() : null; };
+  const release = await get(`releases/tags/v${minimum}`);
+  const comparison = await get(`compare/${compatibility.hostQualificationRevision}...v${minimum}`);
+  problems.push(...requireTilecastRelease(minimum, compatibility.hostQualificationRevision, release, comparison));
+}
+if (problems.length) { for (const problem of problems) console.error(`release gate: ${problem}`); process.exit(1); }
+console.log("Coordinated Stable compatibility, Edge qualification, canary record and immutable package tag confirmed.");

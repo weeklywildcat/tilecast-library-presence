@@ -36,16 +36,21 @@ async function host(shared = {}) {
         if (shared.failPublish) return -2;
         shared.publications.push(input); shared.view.state = input.state; shared.view.validUntil = input.validUntil; data = shared.view;
       } else if (operation === "plugin-runtime.state@1/configure") {
+        (shared.configureCalls ??= []).push(input);
         if (input.expectedConfigurationRevision !== shared.view.configurationRevision) return -2;
         shared.view = { ...shared.view, ...input, configurationRevision: shared.view.configurationRevision + 1, state: null, validUntil: null }; data = shared.view;
       } else if (operation === "targets.resolve@2/options") {
-        data = { items: [{ id: "screen", name: "Library", kind: "screen" }], total: 1, page: 1, pageSize: 50, canSelectAll: true };
+        (shared.optionsCalls ??= []).push(input);
+        data = shared.optionsData?.(input) ?? { items: [{ id: "screen", name: "Library", kind: "screen" }], total: 1, page: 1, pageSize: 50, canSelectAll: true };
       } else return -7;
       return write(out, cap, JSON.stringify({ ok: true, data }));
     },
   } }); instance = result.instance;
   return { shared,
     run() { write(32768, 16384, "presence"); return instance.exports.run_job(32768, 8); },
+    raw(value) { const length = write(32768, 16384, JSON.stringify(value));
+      const status = instance.exports.handle_ui_request(32768, length, 16384, 16384);
+      return status > 0 ? JSON.parse(text(16384, status)) : status; },
     ui(value) { const length = write(32768, 16384, JSON.stringify(value));
       const status = instance.exports.handle_ui_request(32768, length, 16384, 16384);
       assert.ok(status > 0, `UI failed with ${status}`); return JSON.parse(text(16384, status)); },
@@ -79,4 +84,66 @@ test("invalid fetch preserves display without renewing and UI exposes only the b
   const config = h.ui({ action: "save", enabled: false, configuration: { position: "top-right", personalizedGreetings: false },
     targets: { mode: "all", screenIds: [], groupIds: [], locationIds: [] }, revision: 1 });
   assert.equal(config.ok, true); assert.equal(config.data.enabled, false); assert.equal(config.data.revision, 2);
+});
+
+const targets = { mode: "all", screenIds: [], groupIds: [], locationIds: [] };
+const settings = { enabled: true, configuration: { position: "top-left", personalizedGreetings: true }, targets };
+test("a stale configuration revision is refused and leaves the saved settings alone", async () => {
+  const h = await host();
+  const first = h.ui({ action: "save", ...settings, revision: 1 });
+  assert.equal(first.ok, true); assert.equal(first.data.revision, 2);
+  // A second Studio tab still holds revision 1.
+  const stale = h.ui({ action: "save", ...settings, configuration: { position: "bottom-right", personalizedGreetings: false }, revision: 1 });
+  assert.equal(stale.ok, false); assert.equal(typeof stale.message, "string");
+  assert.equal(stale.message.includes("revision"), false, "the answer is a user-facing sentence, not host detail");
+  const current = h.ui({ action: "get" });
+  assert.equal(current.data.revision, 2); assert.equal(current.data.configuration.position, "top-left");
+  // Saving a configuration clears published state, so the next poll must not publish under the old revision.
+  assert.equal(h.shared.view.state, null);
+  h.run();
+  assert.equal(h.shared.publications.at(-1).configurationRevision, 2);
+});
+test("malformed Studio requests are refused before they reach the host", async () => {
+  const h = await host();
+  const invalid = [
+    { action: "unknown" },
+    { action: "save", ...settings, revision: "1" }, { action: "save", ...settings, revision: 1.5 },
+    { action: "save", ...settings, enabled: "yes", revision: 1 },
+    { action: "save", ...settings, configuration: { position: "center", personalizedGreetings: true }, revision: 1 },
+    { action: "save", ...settings, configuration: { position: "top-left", personalizedGreetings: "yes" }, revision: 1 },
+    { action: "save", ...settings, configuration: { position: "top-left", personalizedGreetings: true, color: "red" }, revision: 1 },
+    { action: "save", ...settings, configuration: {}, revision: 1 },
+    { action: "save", enabled: true, configuration: settings.configuration, revision: 1 },
+    { action: "save", ...settings, targets: { mode: "all", screenIds: [], groupIds: [], locationIds: [], extra: 1 }, revision: 1 },
+    { action: "options", kind: "display", page: 1, query: null },
+    { action: "options", kind: "screen", page: 0, query: null },
+    { action: "options", kind: "screen", page: 1001, query: null },
+    { action: "options", kind: "screen", page: 1.5, query: null },
+    { action: "options", kind: "screen", page: 1, query: "x".repeat(101) },
+  ];
+  for (const request of invalid) {
+    const answer = h.raw(request);
+    assert.ok(answer < 0 || answer.ok === false, `accepted ${JSON.stringify(request).slice(0, 80)}`);
+  }
+  assert.equal(h.shared.configureCalls ?? undefined, undefined, "no invalid save reached the state service");
+  assert.equal(h.shared.optionsCalls ?? undefined, undefined, "no invalid lookup reached the target service");
+});
+test("target option pages and search stay within the bounded host contract", async () => {
+  const h = await host();
+  h.shared.optionsData = (input) => ({ items: [{ id: `screen-${input.page}`, name: `Screen ${input.page}`, kind: "screen" }],
+    total: 120, page: input.page, pageSize: 50, canSelectAll: false });
+  const last = h.ui({ action: "options", kind: "screen", page: 3, query: "reading room" });
+  assert.equal(last.data.items[0].id, "screen-3"); assert.equal(last.data.canSelectAll, false);
+  const forwarded = h.shared.optionsCalls.at(-1);
+  assert.equal(forwarded.page, 3); assert.equal(forwarded.pageSize, 50); assert.equal(forwarded.search, "reading room");
+  assert.equal(forwarded.kind, "screen");
+  assert.equal(h.raw({ action: "options", kind: "group", page: 1000, query: "x".repeat(100) }).ok, true);
+});
+test("saving accepts every selected-target kind within the service bounds", async () => {
+  const h = await host();
+  const selected = { mode: "selected", screenIds: ["a"], groupIds: ["b"], locationIds: ["c"] };
+  const saved = h.ui({ action: "save", ...settings, targets: selected, revision: 1 });
+  assert.deepEqual(saved.data.targets, selected);
+  assert.deepEqual(h.shared.configureCalls.at(-1).targets, selected);
+  assert.equal(h.shared.configureCalls.at(-1).expectedConfigurationRevision, 1);
 });
